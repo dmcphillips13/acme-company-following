@@ -1,0 +1,104 @@
+<html>
+  <head>
+<style>
+    body{
+        font-family: verdana;
+    }
+#company * {
+    border-bottom: solid 1px black;
+}
+select{
+    display: flex;
+    width: 100%;
+}
+
+.following {
+    background-color: tomato;
+}
+
+</style>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.js'></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+  </head>
+  <body>
+    <div id='root'></div>
+    <script type='text/babel'>
+    const API = 'https://acme-users-api-rev.herokuapp.com/api';
+
+    const { Component } = React;
+
+    const fetchUser = async ()=> {
+        const storage = window.localStorage;
+        const userId = storage.getItem('userId'); 
+        if(userId){
+            try {
+                return (await axios.get(`${API}/users/detail/${userId}`)).data;
+            }
+            catch(ex){
+                storage.removeItem('userId');
+                return fetchUser();
+            }
+        }
+        const user = (await axios.get(`${API}/users/random`)).data;
+        storage.setItem('userId', user.id);
+        return user;
+    };
+    
+    const fetchCompanies = async ()=> {
+        const companies = (await axios.get(`${API}/companies`));
+        return companies.data;
+    };
+    
+    const fetchFollowingCompanies = async (user)=> {
+        const companies = (await axios.get(`${API}/users/${user.id}/followingCompanies`));
+        return companies.data;
+    };
+
+    class App extends Component {
+        constructor() {
+            super()
+            this.state = {
+                user: {},
+                companies: [],
+                followingCompanies: []
+            }
+        }
+
+        async componentDidMount() {
+            const user = await fetchUser();
+            const companies = await fetchCompanies();
+            const followingCompanies = await fetchFollowingCompanies(user);
+            this.setState({user: user, companies: companies, followingCompanies: followingCompanies});
+        }
+
+        render() {
+            const {data, user, companies, followingCompanies} = this.state
+            console.log(followingCompanies)
+            const options = ['',1,2,3,4,5]
+            return (
+                <div>
+                    <h1>Acme Company Follower</h1>
+                    <h2>You ({user.fullName}) are following {followingCompanies.length} companies</h2>
+                    <ul id = "company">
+                        { companies.map( company => {
+                            return (
+                                <li className={ followingCompanies.find(findCompany => findCompany.id === company.id) ? "following" : "" }>
+                                    <label>{company.name}</label>
+                                    <select> { options.map( option => <option>{ option }</option>) } </select>
+                                </li>
+                            )
+                        }) }
+                    </ul>
+                </div>
+            )
+        }
+    }
+    
+    const root = document.querySelector('#root');
+    ReactDOM.render(<App />, root);
+
+    </script>
+</body>
+</html>
